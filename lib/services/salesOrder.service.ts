@@ -28,10 +28,12 @@ export interface CreateSalesOrderData {
 }
 
 export interface SalesOrderListResponse {
-  salesOrders: SalesOrder[];
-  total: number;
-  page: number;
-  limit: number;
+  data: SalesOrder[];
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+  };
 }
 
 export const salesOrderService = {
@@ -43,7 +45,7 @@ export const salesOrderService = {
     const queryString = query
       ? `?${new URLSearchParams(
           Object.entries(query).reduce((acc, [key, value]) => {
-            if (value !== undefined && value !== null) {
+            if (value !== undefined && value !== null && value !== "") {
               acc[key] = String(value);
             }
             return acc;

@@ -9,6 +9,7 @@ export interface ProductVariant {
   costPrice?: number;
   lowStockThreshold?: number;
   status?: "ACTIVE" | "INACTIVE";
+  stock?: number;
 }
 
 export interface Product {

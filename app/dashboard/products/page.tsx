@@ -181,7 +181,10 @@ export default function ProductsPage() {
     setDeleteDialogOpen(false);
     setProductToDelete(null);
   };
-  const handlePageChange = (event: React.ChangeEvent<unknown>, page: number) => {
+  const handlePageChange = (
+    event: React.ChangeEvent<unknown>,
+    page: number
+  ) => {
     setPagination((prev) => ({ ...prev, page }));
   };
 
@@ -260,10 +263,7 @@ export default function ProductsPage() {
             ),
             endAdornment: searchQuery && (
               <InputAdornment position="end">
-                <MuiIconButton
-                  size="small"
-                  onClick={() => setSearchQuery("")}
-                >
+                <MuiIconButton size="small" onClick={() => setSearchQuery("")}>
                   <CloseIcon />
                 </MuiIconButton>
               </InputAdornment>
@@ -291,6 +291,7 @@ export default function ProductsPage() {
               <TableCell>Description</TableCell>
               <TableCell>Categories</TableCell>
               <TableCell>Variants</TableCell>
+              <TableCell>Total Stock</TableCell>
               <TableCell>Status</TableCell>
               {canEdit && <TableCell align="right">Actions</TableCell>}
             </TableRow>
@@ -298,13 +299,13 @@ export default function ProductsPage() {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={canEdit ? 6 : 5} align="center">
+                <TableCell colSpan={canEdit ? 7 : 6} align="center">
                   Loading...
                 </TableCell>
               </TableRow>
             ) : products.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={canEdit ? 6 : 5} align="center">
+                <TableCell colSpan={canEdit ? 7 : 6} align="center">
                   No products found
                 </TableCell>
               </TableRow>
@@ -324,6 +325,14 @@ export default function ProductsPage() {
                       : "No variants"}
                   </TableCell>
                   <TableCell>
+                    {product.variants && product.variants.length > 0
+                      ? product.variants.reduce(
+                          (sum, v) => sum + (v.stock || 0),
+                          0
+                        )
+                      : 0}
+                  </TableCell>
+                  <TableCell>
                     <Chip
                       label={product.status}
                       color={getStatusColor(product.status) as any}
@@ -332,12 +341,18 @@ export default function ProductsPage() {
                   </TableCell>
                   {canEdit && (
                     <TableCell align="right">
-                      <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+                      <Box
+                        sx={{
+                          display: "flex",
+                          gap: 1,
+                          justifyContent: "flex-end",
+                        }}
+                      >
                         <IconButton
                           size="small"
                           onClick={() => handleOpenDialog(product)}
                           color="primary"
-                          sx={{ '&:hover': { bgcolor: 'primary.light' } }}
+                          sx={{ "&:hover": { bgcolor: "primary.light" } }}
                         >
                           <EditIcon />
                         </IconButton>
@@ -345,7 +360,7 @@ export default function ProductsPage() {
                           size="small"
                           onClick={() => handleDeleteClick(product._id)}
                           color="error"
-                          sx={{ '&:hover': { bgcolor: 'error.light' } }}
+                          sx={{ "&:hover": { bgcolor: "error.light" } }}
                         >
                           <DeleteIcon />
                         </IconButton>
@@ -358,7 +373,7 @@ export default function ProductsPage() {
           </TableBody>
         </Table>
       </TableContainer>
-      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2, mb: 4 }}>
+      <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 2, mb: 4 }}>
         <Pagination
           count={Math.ceil(pagination.total / pagination.limit)}
           page={pagination.page}
@@ -566,7 +581,10 @@ export default function ProductsPage() {
       >
         <DialogTitle>Confirm Delete</DialogTitle>
         <DialogContent>
-          <Typography>Are you sure you want to delete this product? This action cannot be undone.</Typography>
+          <Typography>
+            Are you sure you want to delete this product? This action cannot be
+            undone.
+          </Typography>
         </DialogContent>
         <DialogActions>
           <Button onClick={handleDeleteCancel} color="primary">
