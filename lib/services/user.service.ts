@@ -16,10 +16,10 @@ export interface UpdateUserData extends Partial<CreateUserData> {
 }
 
 export interface UserListResponse {
-  users: User[];
-  total: number;
-  page: number;
-  limit: number;
+  Users: User[];
+  Total: number;
+  page?: number;
+  limit?: number;
 }
 
 export const userService = {
@@ -31,13 +31,13 @@ export const userService = {
   }) => {
     const queryString = query
       ? `?${new URLSearchParams(
-          Object.entries(query).reduce((acc, [key, value]) => {
-            if (value !== undefined && value !== null) {
-              acc[key] = String(value);
-            }
-            return acc;
-          }, {} as Record<string, string>)
-        ).toString()}`
+        Object.entries(query).reduce((acc, [key, value]) => {
+          if (value !== undefined && value !== null) {
+            acc[key] = String(value);
+          }
+          return acc;
+        }, {} as Record<string, string>)
+      ).toString()}`
       : "";
     return apiClient.get<UserListResponse>(`/user${queryString}`);
   },

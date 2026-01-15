@@ -20,14 +20,15 @@ import {
   Alert,
   Chip,
   IconButton,
-  Menu,
-  MenuItem,
   InputAdornment,
+  Tooltip,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
-import MoreVertIcon from "@mui/icons-material/MoreVert";
 import SearchIcon from "@mui/icons-material/Search";
 import CloseIcon from "@mui/icons-material/Close";
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import LocalShippingIcon from '@mui/icons-material/LocalShipping';
+import AssignmentTurnedInIcon from '@mui/icons-material/AssignmentTurnedIn';
 import {
   purchaseOrderService,
   PurchaseOrder,
@@ -47,10 +48,7 @@ export default function PurchaseOrdersPage() {
     notes: "",
     status: "DRAFT",
   });
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const [selectedOrder, setSelectedOrder] = useState<PurchaseOrder | null>(
-    null
-  );
+  const [selectedOrder, setSelectedOrder] = useState<PurchaseOrder | null>(null);
 
   useEffect(() => {
     loadOrders();
@@ -111,32 +109,16 @@ export default function PurchaseOrdersPage() {
     }
   };
 
-  const handleMenuOpen = (
-    event: React.MouseEvent<HTMLElement>,
-    order: PurchaseOrder
-  ) => {
-    setAnchorEl(event.currentTarget);
-    setSelectedOrder(order);
-  };
-
-  const handleMenuClose = () => {
-    setAnchorEl(null);
-    setSelectedOrder(null);
-  };
-
-  const handleStatusUpdate = async (
-    status: "DRAFT" | "SENT" | "CONFIRMED" | "RECEIVED"
-  ) => {
-    if (!selectedOrder) return;
+  const handleStatusUpdate = async (order: PurchaseOrder, status: string) => {
+    if (!confirm(`Are you sure you want to mark this order as ${status}?`)) return;
     try {
       await purchaseOrderService.updatePOStatus({
-        poId: selectedOrder._id,
-        status,
+        poId: order._id,
+        status: status as any // Type assertion needed to match the expected type
       });
-      handleMenuClose();
       loadOrders();
     } catch (err: any) {
-      setError(err.message || "Failed to update status");
+      setError(err.message || "Failed to update order status");
     }
   };
 
@@ -242,12 +224,41 @@ export default function PurchaseOrdersPage() {
                     {new Date(order.createdAt).toLocaleDateString()}
                   </TableCell>
                   <TableCell align="right">
-                    <IconButton
-                      size="small"
-                      onClick={(e) => handleMenuOpen(e, order)}
-                    >
-                      <MoreVertIcon />
-                    </IconButton>
+                    <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+                      <Tooltip title="Mark as Sent">
+                        <IconButton
+                          size="small"
+                          onClick={() => handleStatusUpdate(order, 'SENT')}
+                          color="primary"
+                          disabled={order.status === 'SENT'}
+                          sx={{ '&:hover': { bgcolor: 'primary.light' } }}
+                        >
+                          <LocalShippingIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Mark as Confirmed">
+                        <IconButton
+                          size="small"
+                          onClick={() => handleStatusUpdate(order, 'CONFIRMED')}
+                          color="secondary"
+                          disabled={order.status === 'CONFIRMED'}
+                          sx={{ '&:hover': { bgcolor: 'secondary.light' } }}
+                        >
+                          <CheckCircleIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Mark as Received">
+                        <IconButton
+                          size="small"
+                          onClick={() => handleStatusUpdate(order, 'RECEIVED')}
+                          color="success"
+                          disabled={order.status === 'RECEIVED'}
+                          sx={{ '&:hover': { bgcolor: 'success.light' } }}
+                        >
+                          <AssignmentTurnedInIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    </Box>
                   </TableCell>
                 </TableRow>
               ))
@@ -256,21 +267,6 @@ export default function PurchaseOrdersPage() {
         </Table>
       </TableContainer>
 
-      <Menu
-        anchorEl={anchorEl}
-        open={Boolean(anchorEl)}
-        onClose={handleMenuClose}
-      >
-        <MenuItem onClick={() => handleStatusUpdate("SENT")}>
-          Mark as Sent
-        </MenuItem>
-        <MenuItem onClick={() => handleStatusUpdate("CONFIRMED")}>
-          Mark as Confirmed
-        </MenuItem>
-        <MenuItem onClick={() => handleStatusUpdate("RECEIVED")}>
-          Mark as Received
-        </MenuItem>
-      </Menu>
 
       <Dialog
         open={openDialog}

@@ -26,17 +26,20 @@ import {
   FormControl,
   InputLabel,
   InputAdornment,
+  Pagination,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import SearchIcon from "@mui/icons-material/Search";
 import CloseIcon from "@mui/icons-material/Close";
-import { userService, User, CreateUserData } from "@/lib/services/user.service";
+import EditIcon from "@mui/icons-material/Edit";
+import DeleteIcon from "@mui/icons-material/Delete";
+import { userService, CreateUserData } from "@/lib/services/user.service";
 import { useAuth } from "@/contexts/AuthContext";
+import { User } from "@/lib/services/auth.service";
 
 export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
-  const [allUsers, setAllUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
@@ -50,8 +53,13 @@ export default function UsersPage() {
     phone: "",
     role: "STAFF",
   });
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 10,
+    total: 0,
+  });
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<string | null>(null);
   const { user: currentUser } = useAuth();
 
   const canManage = currentUser?.role === "OWNER" || currentUser?.role === "MANAGER";
@@ -60,40 +68,32 @@ export default function UsersPage() {
     if (canManage) {
       loadUsers();
     }
-  }, [canManage]);
-
-  useEffect(() => {
-    if (searchQuery.trim() === "") {
-      setUsers(allUsers);
-    } else {
-      const filtered = allUsers.filter(
-        (user) =>
-          user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          (user.firstName &&
-            user.firstName.toLowerCase().includes(searchQuery.toLowerCase())) ||
-          (user.lastName &&
-            user.lastName.toLowerCase().includes(searchQuery.toLowerCase())) ||
-          (user.phone && user.phone.includes(searchQuery)) ||
-          user.role.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-      setUsers(filtered);
-    }
-  }, [searchQuery, allUsers]);
+  }, [canManage, pagination.page, searchQuery]);
 
   const loadUsers = async () => {
     try {
       setLoading(true);
-      const response = await userService.getUsers();
+      const response = await userService.getUsers({
+        page: pagination.page,
+        limit: pagination.limit,
+        search: searchQuery || undefined,
+      });
       if (response.success) {
-        const usersList = response.data.users || [];
-        setAllUsers(usersList);
-        setUsers(usersList);
+        setUsers(response.data.Users || []);
+        setPagination((prev) => ({
+          ...prev,
+          total: response.data.Total || 0,
+        }));
       }
     } catch (err: any) {
       setError(err.message || "Failed to load users");
     } finally {
       setLoading(false);
     }
+  };
+
+  const handlePageChange = (event: React.ChangeEvent<unknown>, page: number) => {
+    setPagination((prev) => ({ ...prev, page }));
   };
 
   const handleOpenDialog = (user?: User) => {
@@ -145,25 +145,31 @@ export default function UsersPage() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this user?")) return;
+  const handleDeleteClick = (id: string) => {
+    setUserToDelete(id);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!userToDelete) return;
+
     try {
-      await userService.deleteUser(id);
+      await userService.deleteUser(userToDelete);
       loadUsers();
+      setDeleteDialogOpen(false);
+      setUserToDelete(null);
     } catch (err: any) {
       setError(err.message || "Failed to delete user");
+      setDeleteDialogOpen(false);
+      setUserToDelete(null);
     }
   };
 
-  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, user: User) => {
-    setAnchorEl(event.currentTarget);
-    setSelectedUser(user);
+  const handleDeleteCancel = () => {
+    setDeleteDialogOpen(false);
+    setUserToDelete(null);
   };
 
-  const handleMenuClose = () => {
-    setAnchorEl(null);
-    setSelectedUser(null);
-  };
 
   const getRoleColor = (role: string) => {
     switch (role) {
@@ -199,12 +205,15 @@ export default function UsersPage() {
         </Button>
       </Box>
 
-      <Box sx={{ mb: 2 }}>
+      <Box sx={{ mb: 3, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <TextField
-          fullWidth
+          sx={{ width: 300 }}
           placeholder="Search users..."
           value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
+          onChange={(e) => {
+            setSearchQuery(e.target.value);
+            setPagination((prev) => ({ ...prev, page: 1 }));
+          }}
           InputProps={{
             startAdornment: (
               <InputAdornment position="start">
@@ -213,10 +222,7 @@ export default function UsersPage() {
             ),
             endAdornment: searchQuery && (
               <InputAdornment position="end">
-                <IconButton
-                  size="small"
-                  onClick={() => setSearchQuery("")}
-                >
+                <IconButton size="small" onClick={() => setSearchQuery("")}>
                   <CloseIcon />
                 </IconButton>
               </InputAdornment>
@@ -226,10 +232,16 @@ export default function UsersPage() {
       </Box>
 
       {error && (
-        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError("")}>
+        <Alert severity="error" sx={{ mb: 2 }}>
           {error}
         </Alert>
       )}
+
+      <Box sx={{ mb: 2 }}>
+        <Typography variant="body2" color="text.secondary">
+          Showing {users.length} of {pagination.total} users
+        </Typography>
+      </Box>
 
       <TableContainer component={Paper}>
         <Table>
@@ -281,12 +293,26 @@ export default function UsersPage() {
                     />
                   </TableCell>
                   <TableCell align="right">
-                    <IconButton
-                      size="small"
-                      onClick={(e) => handleMenuOpen(e, user)}
-                    >
-                      <MoreVertIcon />
-                    </IconButton>
+                    <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+                      <IconButton
+                        size="small"
+                        onClick={() => handleOpenDialog(user)}
+                        color="primary"
+                        sx={{ '&:hover': { bgcolor: 'primary.light' } }}
+                      >
+                        <EditIcon />
+                      </IconButton>
+                      {(currentUser?.role === "OWNER") && (
+                        <IconButton
+                          size="small"
+                          onClick={() => handleDeleteClick(user._id)}
+                          color="error"
+                          sx={{ '&:hover': { bgcolor: 'error.light' } }}
+                        >
+                          <DeleteIcon />
+                        </IconButton>
+                      )}
+                    </Box>
                   </TableCell>
                 </TableRow>
               ))
@@ -295,26 +321,17 @@ export default function UsersPage() {
         </Table>
       </TableContainer>
 
-      <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose}>
-        <MenuItem
-          onClick={() => {
-            if (selectedUser) handleOpenDialog(selectedUser);
-            handleMenuClose();
-          }}
-        >
-          Edit
-        </MenuItem>
-        {currentUser?.role === "OWNER" && (
-          <MenuItem
-            onClick={() => {
-              if (selectedUser) handleDelete(selectedUser._id);
-              handleMenuClose();
-            }}
-          >
-            Delete
-          </MenuItem>
-        )}
-      </Menu>
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2, mb: 4 }}>
+        <Pagination
+          count={Math.ceil(pagination.total / pagination.limit)}
+          page={pagination.page}
+          onChange={handlePageChange}
+          color="primary"
+          showFirstButton
+          showLastButton
+          disabled={loading}
+        />
+      </Box>
 
       <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
         <DialogTitle>{editingUser ? "Edit User" : "Add User"}</DialogTitle>
@@ -384,6 +401,32 @@ export default function UsersPage() {
           <Button onClick={handleCloseDialog}>Cancel</Button>
           <Button onClick={handleSubmit} variant="contained">
             {editingUser ? "Update" : "Create"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={handleDeleteCancel}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Confirm Delete</DialogTitle>
+        <DialogContent>
+          <Typography>Are you sure you want to delete this user? This action cannot be undone.</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleDeleteCancel} color="primary">
+            Cancel
+          </Button>
+          <Button
+            onClick={handleDeleteConfirm}
+            color="error"
+            variant="contained"
+            autoFocus
+          >
+            Delete
           </Button>
         </DialogActions>
       </Dialog>

@@ -1,72 +1,78 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api/v1";
+import axios, { AxiosError, AxiosInstance } from "axios";
 
-interface ApiResponse<T> {
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL && process.env.NEXT_PUBLIC_API_SLUG
+    ? `${process.env.NEXT_PUBLIC_API_URL}${process.env.NEXT_PUBLIC_API_SLUG}`
+    : "http://192.168.1.101:5001";
+
+export interface ApiResponse<T> {
   success: boolean;
   message: string;
   statusCode: number;
   data: T;
 }
 
-class ApiClient {
-  private baseUrl: string;
+const axiosClient: AxiosInstance = axios.create({
+  baseURL: API_URL,
+  withCredentials: true,
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
 
-  constructor(baseUrl: string) {
-    this.baseUrl = baseUrl;
+const handleApiError = (error: unknown): never => {
+  if (axios.isAxiosError(error)) {
+    const axiosError = error as AxiosError<any>;
+    const message =
+      axiosError.response?.data?.message ||
+      axiosError.message ||
+      "An error occurred";
+    throw new Error(message);
   }
 
-  private async request<T>(
-    endpoint: string,
-    options: RequestInit = {}
-  ): Promise<ApiResponse<T>> {
-    const url = `${this.baseUrl}${endpoint}`;
-    
-    const config: RequestInit = {
-      ...options,
-      headers: {
-        "Content-Type": "application/json",
-        ...options.headers,
-      },
-      credentials: "include", // Important for cookies
-    };
+  throw new Error("An unexpected error occurred");
+};
 
-    try {
-      const response = await fetch(url, config);
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "An error occurred");
-      }
-
-      return data;
-    } catch (error) {
-      if (error instanceof Error) {
-        throw error;
-      }
-      throw new Error("An unexpected error occurred");
-    }
-  }
-
+export const apiClient = {
   async get<T>(endpoint: string): Promise<ApiResponse<T>> {
-    return this.request<T>(endpoint, { method: "GET" });
-  }
+    try {
+      const response = await axiosClient.get<ApiResponse<T>>(endpoint);
+      return response.data;
+    } catch (error) {
+      handleApiError(error);
+      throw error;
+    }
+  },
 
-  async post<T>(endpoint: string, body?: any): Promise<ApiResponse<T>> {
-    return this.request<T>(endpoint, {
-      method: "POST",
-      body: JSON.stringify(body),
-    });
-  }
 
-  async patch<T>(endpoint: string, body?: any): Promise<ApiResponse<T>> {
-    return this.request<T>(endpoint, {
-      method: "PATCH",
-      body: JSON.stringify(body),
-    });
-  }
+
+  async post<T>(endpoint: string, body?: unknown): Promise<ApiResponse<T>> {
+    try {
+      const response = await axiosClient.post<ApiResponse<T>>(endpoint, body);
+      return response.data;
+    } catch (error) {
+      handleApiError(error);
+      throw error;
+    }
+  },
+
+  async patch<T>(endpoint: string, body?: unknown): Promise<ApiResponse<T>> {
+    try {
+      const response = await axiosClient.patch<ApiResponse<T>>(endpoint, body);
+      return response.data;
+    } catch (error) {
+      handleApiError(error);
+      throw error;
+    }
+  },
 
   async delete<T>(endpoint: string): Promise<ApiResponse<T>> {
-    return this.request<T>(endpoint, { method: "DELETE" });
-  }
-}
-
-export const apiClient = new ApiClient(API_URL);
+    try {
+      const response = await axiosClient.delete<ApiResponse<T>>(endpoint);
+      return response.data;
+    } catch (error) {
+      handleApiError(error);
+      throw error;
+    }
+  },
+};

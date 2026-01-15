@@ -20,17 +20,15 @@ import {
   TextField,
   Alert,
   Chip,
-  Menu,
-  MenuItem,
   InputAdornment,
   Grid,
   IconButton as MuiIconButton,
   Divider,
+  Pagination,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
-import MoreVertIcon from "@mui/icons-material/MoreVert";
 import SearchIcon from "@mui/icons-material/Search";
 import CloseIcon from "@mui/icons-material/Close";
 import {
@@ -56,8 +54,14 @@ export default function ProductsPage() {
     status: "ACTIVE",
     variants: [],
   });
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 10,
+    total: 0,
+  });
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [productToDelete, setProductToDelete] = useState<string | null>(null);
+
   const { user } = useAuth();
 
   const canEdit = user?.role === "OWNER" || user?.role === "MANAGER";
@@ -78,10 +82,16 @@ export default function ProductsPage() {
     try {
       setLoading(true);
       const response = await productService.getProducts({
+        page: pagination.page,
+        limit: pagination.limit,
         search: searchQuery || undefined,
       });
       if (response.success) {
         setProducts(response.data.Products || []);
+        setPagination((prev) => ({
+          ...prev,
+          total: response.data.Total || 0,
+        }));
       }
     } catch (err: any) {
       setError(err.message || "Failed to load products");
@@ -147,27 +157,32 @@ export default function ProductsPage() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this product?")) return;
+  const handleDeleteClick = (id: string) => {
+    setProductToDelete(id);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!productToDelete) return;
+
     try {
-      await productService.deleteProduct(id);
+      await productService.deleteProduct(productToDelete);
       loadProducts();
+      setDeleteDialogOpen(false);
+      setProductToDelete(null);
     } catch (err: any) {
       setError(err.message || "Failed to delete product");
+      setDeleteDialogOpen(false);
+      setProductToDelete(null);
     }
   };
 
-  const handleMenuOpen = (
-    event: React.MouseEvent<HTMLElement>,
-    product: Product
-  ) => {
-    setAnchorEl(event.currentTarget);
-    setSelectedProduct(product);
+  const handleDeleteCancel = () => {
+    setDeleteDialogOpen(false);
+    setProductToDelete(null);
   };
-
-  const handleMenuClose = () => {
-    setAnchorEl(null);
-    setSelectedProduct(null);
+  const handlePageChange = (event: React.ChangeEvent<unknown>, page: number) => {
+    setPagination((prev) => ({ ...prev, page }));
   };
 
   const handleAddVariant = () => {
@@ -262,6 +277,11 @@ export default function ProductsPage() {
           {error}
         </Alert>
       )}
+      <Box sx={{ mb: 2 }}>
+        <Typography variant="body2" color="text.secondary">
+          Showing {products.length} of {pagination.total} products
+        </Typography>
+      </Box>
 
       <TableContainer component={Paper}>
         <Table>
@@ -312,12 +332,24 @@ export default function ProductsPage() {
                   </TableCell>
                   {canEdit && (
                     <TableCell align="right">
-                      <IconButton
-                        size="small"
-                        onClick={(e) => handleMenuOpen(e, product)}
-                      >
-                        <MoreVertIcon />
-                      </IconButton>
+                      <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+                        <IconButton
+                          size="small"
+                          onClick={() => handleOpenDialog(product)}
+                          color="primary"
+                          sx={{ '&:hover': { bgcolor: 'primary.light' } }}
+                        >
+                          <EditIcon />
+                        </IconButton>
+                        <IconButton
+                          size="small"
+                          onClick={() => handleDeleteClick(product._id)}
+                          color="error"
+                          sx={{ '&:hover': { bgcolor: 'error.light' } }}
+                        >
+                          <DeleteIcon />
+                        </IconButton>
+                      </Box>
                     </TableCell>
                   )}
                 </TableRow>
@@ -326,31 +358,17 @@ export default function ProductsPage() {
           </TableBody>
         </Table>
       </TableContainer>
-
-      <Menu
-        anchorEl={anchorEl}
-        open={Boolean(anchorEl)}
-        onClose={handleMenuClose}
-      >
-        <MenuItem
-          onClick={() => {
-            if (selectedProduct) handleOpenDialog(selectedProduct);
-            handleMenuClose();
-          }}
-        >
-          <EditIcon sx={{ mr: 1 }} fontSize="small" />
-          Edit
-        </MenuItem>
-        <MenuItem
-          onClick={() => {
-            if (selectedProduct) handleDelete(selectedProduct._id);
-            handleMenuClose();
-          }}
-        >
-          <DeleteIcon sx={{ mr: 1 }} fontSize="small" />
-          Delete
-        </MenuItem>
-      </Menu>
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2, mb: 4 }}>
+        <Pagination
+          count={Math.ceil(pagination.total / pagination.limit)}
+          page={pagination.page}
+          onChange={handlePageChange}
+          color="primary"
+          showFirstButton
+          showLastButton
+          disabled={loading}
+        />
+      </Box>
 
       <Dialog
         open={openDialog}
@@ -536,6 +554,31 @@ export default function ProductsPage() {
           <Button onClick={handleCloseDialog}>Cancel</Button>
           <Button onClick={handleSubmit} variant="contained">
             {editingProduct ? "Update" : "Create"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={handleDeleteCancel}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Confirm Delete</DialogTitle>
+        <DialogContent>
+          <Typography>Are you sure you want to delete this product? This action cannot be undone.</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleDeleteCancel} color="primary">
+            Cancel
+          </Button>
+          <Button
+            onClick={handleDeleteConfirm}
+            color="error"
+            variant="contained"
+            autoFocus
+          >
+            Delete
           </Button>
         </DialogActions>
       </Dialog>
