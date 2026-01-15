@@ -106,7 +106,7 @@ export default function PurchaseOrdersPage() {
         status: searchQuery ? undefined : undefined,
       });
       if (response.success) {
-        let ordersList = response.data.data || [];
+        let ordersList = response.data.PurchaseOrder || [];
         // Client-side search filtering
         if (searchQuery) {
           ordersList = ordersList.filter(
@@ -119,7 +119,7 @@ export default function PurchaseOrdersPage() {
         setOrders(ordersList);
         setPagination((prev) => ({
           ...prev,
-          total: response.data.pagination?.total || 0,
+          total: response.data.Total || 0,
         }));
       }
     } catch (err: any) {
@@ -206,7 +206,6 @@ export default function PurchaseOrdersPage() {
     if (!orderToUpdate || !statusToUpdate) return;
     try {
       if (statusToUpdate === "RECEIVED") {
-        // For RECEIVED status, use the updatePOStatus which now handles automatic receiving
         await purchaseOrderService.updatePOStatus(orderToUpdate._id, statusToUpdate);
       } else {
         await purchaseOrderService.updatePOStatus(orderToUpdate._id, statusToUpdate);
@@ -215,7 +214,6 @@ export default function PurchaseOrdersPage() {
       setOrderToUpdate(null);
       setStatusToUpdate(null);
       loadOrders();
-      // Reload products to update stock
       if (statusToUpdate === "RECEIVED") {
         loadProducts();
       }
@@ -578,7 +576,6 @@ export default function PurchaseOrdersPage() {
         </DialogActions>
       </Dialog>
 
-      {/* Status Update Confirmation Dialog */}
       <Dialog
         open={statusUpdateDialogOpen}
         onClose={handleStatusUpdateCancel}

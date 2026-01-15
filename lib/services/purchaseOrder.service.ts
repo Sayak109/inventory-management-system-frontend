@@ -40,12 +40,8 @@ export interface ReceivePOData {
 }
 
 export interface PurchaseOrderListResponse {
-  data: PurchaseOrder[];
-  pagination: {
-    total: number;
-    page: number;
-    limit: number;
-  };
+  PurchaseOrder: PurchaseOrder[];
+  Total: number,
 }
 
 export const purchaseOrderService = {
@@ -56,13 +52,13 @@ export const purchaseOrderService = {
   }) => {
     const queryString = query
       ? `?${new URLSearchParams(
-          Object.entries(query).reduce((acc, [key, value]) => {
-            if (value !== undefined && value !== null && value !== "") {
-              acc[key] = String(value);
-            }
-            return acc;
-          }, {} as Record<string, string>)
-        ).toString()}`
+        Object.entries(query).reduce((acc, [key, value]) => {
+          if (value !== undefined && value !== null && value !== "") {
+            acc[key] = String(value);
+          }
+          return acc;
+        }, {} as Record<string, string>)
+      ).toString()}`
       : "";
     return apiClient.get<PurchaseOrderListResponse>(`/purchase-order${queryString}`);
   },
@@ -75,7 +71,7 @@ export const purchaseOrderService = {
     return apiClient.post<PurchaseOrder>("/purchase-order", data);
   },
 
-  updatePOStatus: async (id: string, status: "SENT" | "CONFIRMED") => {
+  updatePOStatus: async (id: string, status: "SENT" | "CONFIRMED" | "RECEIVED") => {
     return apiClient.patch<PurchaseOrder>(`/purchase-order/${id}/status`, {
       poId: id,
       status: status,

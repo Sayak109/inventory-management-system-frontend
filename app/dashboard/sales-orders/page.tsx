@@ -105,8 +105,7 @@ export default function SalesOrdersPage() {
         status: searchQuery ? undefined : undefined,
       });
       if (response.success) {
-        let ordersList = response.data.data || [];
-        // Client-side search filtering
+        let ordersList = response.data.SalesOrder || [];
         if (searchQuery) {
           ordersList = ordersList.filter(
             (order) =>
@@ -121,7 +120,7 @@ export default function SalesOrdersPage() {
         setOrders(ordersList);
         setPagination((prev) => ({
           ...prev,
-          total: response.data.pagination?.total || 0,
+          total: response.data.Total || 0,
         }));
       }
     } catch (err: any) {

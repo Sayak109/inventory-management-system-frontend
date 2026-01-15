@@ -28,12 +28,8 @@ export interface CreateSalesOrderData {
 }
 
 export interface SalesOrderListResponse {
-  data: SalesOrder[];
-  pagination: {
-    total: number;
-    page: number;
-    limit: number;
-  };
+  SalesOrder: SalesOrder[];
+  Total: number
 }
 
 export const salesOrderService = {
@@ -44,13 +40,13 @@ export const salesOrderService = {
   }) => {
     const queryString = query
       ? `?${new URLSearchParams(
-          Object.entries(query).reduce((acc, [key, value]) => {
-            if (value !== undefined && value !== null && value !== "") {
-              acc[key] = String(value);
-            }
-            return acc;
-          }, {} as Record<string, string>)
-        ).toString()}`
+        Object.entries(query).reduce((acc, [key, value]) => {
+          if (value !== undefined && value !== null && value !== "") {
+            acc[key] = String(value);
+          }
+          return acc;
+        }, {} as Record<string, string>)
+      ).toString()}`
       : "";
     return apiClient.get<SalesOrderListResponse>(`/sales-order${queryString}`);
   },
