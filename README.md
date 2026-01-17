@@ -24,17 +24,12 @@ This is the frontend application for the Multi-Tenant Inventory Management Syste
 npm install
 ```
 
-2. Create a `.env.local` file in the root directory:
-```env
-NEXT_PUBLIC_API_URL=http://localhost:5001/api/v1
-```
-
-3. Run the development server:
+2. Run the development server:
 ```bash
 npm run dev
 ```
 
-4. Open [http://localhost:3000](http://localhost:3000) in your browser.
+3. Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ## Project Structure
 
@@ -111,21 +106,6 @@ The frontend communicates with the backend API at `http://localhost:5001/api/v1`
 - **MANAGER**: Can manage products, users, and orders (except delete users)
 - **STAFF**: Can view products and orders, create sales orders
 
-## Notes
-
-1. **Purchase Order & Sales Order Routes**: Make sure the backend has registered the purchase-order and sales-order routes in `server.ts`. If not, add:
-   ```typescript
-   import purchaseOrderRoutes from './modules/purchase-order/purchaseOrder.routes';
-   import salesOrderRoutes from './modules/sales-orders/sales-order.routes';
-   
-   app.use(`${process.env.API_PREFIX}/purchase-order`, purchaseOrderRoutes);
-   app.use(`${process.env.API_PREFIX}/sales-order`, salesOrderRoutes);
-   ```
-
-2. **Items Management**: The current implementation allows creating orders with empty items arrays. Full items management (adding/editing items) can be added in future updates.
-
-3. **Error Handling**: All API calls include error handling with user-friendly error messages displayed via Material UI Alert components.
-
 ## Build for Production
 
 ```bash
@@ -135,4 +115,5 @@ npm start
 
 ## Environment Variables
 
-- `NEXT_PUBLIC_API_URL` - Backend API base URL (default: `http://localhost:5001/api/v1`)
+- NEXT_PUBLIC_API_URL=http://192.168.1.101:5001
+- NEXT_PUBLIC_API_SLUG=/api/v1
